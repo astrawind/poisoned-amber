@@ -34,7 +34,11 @@ func (r *Room) Continue(c *Content, rng RNG, now int64) error {
 	case "preparation":
 		if c.Route[r.Encounter].Final {
 			r.Votes = map[string]bool{}
-			r.note("Босс: мой порядок спасёт горы. Присоединитесь? Молчание — отказ; при равенстве решает живой глава.")
+			if c.Finale == nil {
+				r.note("Босс: мой порядок спасёт горы. Присоединитесь? Молчание — отказ; при равенстве решает живой глава.")
+			} else {
+				r.note("Алхимик ждёт ответа: присоединиться к празднику или отказаться? Молчание — отказ.")
+			}
 			r.SetPhase("vote", c.Balance.VoteSeconds, now)
 		} else {
 			r.StartChallenge(c, rng, now)
@@ -45,6 +49,9 @@ func (r *Room) Continue(c *Content, rng RNG, now int64) error {
 	return nil
 }
 func (r *Room) StartChallenge(c *Content, rng RNG, now int64) {
+	if b := r.CurrentBoss(c); b.ID != "" {
+		r.note(b.Challenge)
+	}
 	kinds := []string{}
 	for _, k := range c.Challenges {
 		if !slices.Contains(r.UsedChallenges, k) {
@@ -208,7 +215,7 @@ func (r *Room) FinishVote(c *Content, now int64) {
 		r.SetPhase("ended", 0, now)
 		r.note("Вы приняли сторону хозяина тумана.")
 	} else {
-		r.BeginCombat(c, now)
+		r.BeginFinal(c, now)
 	}
 }
 func (r *Room) Timeout(c *Content, rng RNG, now int64) {
@@ -223,6 +230,8 @@ func (r *Room) Timeout(c *Content, rng RNG, now int64) {
 		return
 	}
 	switch r.Phase {
+	case "barrel":
+		r.FinishBarrel(c, now)
 	case "combat":
 		r.Log = nil
 		for _, p := range r.Players {

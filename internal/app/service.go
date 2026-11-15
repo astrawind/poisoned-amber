@@ -101,7 +101,7 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 			if e != nil {
 				return e
 			}
-			return reply("✅ 18+ подтверждено.\n\n" + welcomeText)
+			return enqueue(tx, in.User, Message{HTML: true, Text: adultDrinkText + "\n\n" + welcomeText})
 		}
 		if adult == 0 {
 			return reply(welcomeText + "\n\n🔞 Игра для совершеннолетних. Сначала подтвердите, что вам исполнилось 18: /adult")
@@ -276,6 +276,7 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 		}
 		before := r.Phase
 		phase := r.PhaseID
+		drinkReason := ""
 		err := domain.ErrInvalid
 		switch cmd {
 		case "/leave_confirm":
@@ -306,6 +307,9 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 				p.Acted = true
 				r.AfterAction(c, s.RNG, now)
 			}
+			if r.Phase == "barrel" && r.BarrelReady() {
+				r.FinishBarrel(c, now)
+			}
 			err = nil
 		case "/class":
 			if r.Phase == "lobby" && len(parts) == 2 && c.Class(parts[1]).ID != "" {
@@ -326,7 +330,7 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 			}
 		case "/begin":
 			if r.Leader == p.ID {
-				err = r.Start(c, now)
+				err = r.Start(c, s.RNG, now)
 			}
 		case "/act":
 			if len(parts) >= 2 {
@@ -335,6 +339,15 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 					target = parts[2]
 				}
 				err = r.Act(c, s.RNG, p.ID, parts[1], target, now)
+				if err == nil {
+					memory := c.Memory(parts[1])
+					for _, effect := range memory.Effects {
+						if effect.Kind == "heal" {
+							drinkReason = "Использовано воспоминание «" + memory.Name + "»."
+							break
+						}
+					}
+				}
 			}
 		case "/continue":
 			if r.Leader == p.ID {
@@ -362,6 +375,13 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 		case "/vote":
 			if len(parts) == 2 && (parts[1] == "yes" || parts[1] == "no") {
 				err = r.CastVote(c, p.ID, parts[1] == "yes", now)
+			}
+		case "/barrel":
+			if len(parts) == 2 && (parts[1] == "yes" || parts[1] == "no") {
+				err = r.ChooseBarrel(c, p.ID, parts[1] == "yes", now)
+				if err == nil && parts[1] == "yes" {
+					drinkReason = "Принято угощение из бочки."
+				}
 			}
 		case "/memory", "/toggle":
 			ids := slices.Clone(parts[1:])
@@ -393,7 +413,7 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 				}
 			}
 		case "/pause":
-			if r.Leader == p.ID && (r.Phase == "preparation" || r.Phase == "transition" || r.Phase == "rewards") {
+			if r.Leader == p.ID && (r.Phase == "barrel" || r.Phase == "preparation" || r.Phase == "transition" || r.Phase == "rewards") {
 				r.PausedPhase = r.Phase
 				r.Remaining = max(0, r.Deadline-now)
 				r.SetPhase("paused", 0, now)
@@ -405,12 +425,7 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 				err = nil
 			}
 		case "/story":
-			if r.Phase == "preparation" || r.Phase == "transition" {
-				bg := c.Background(p.Background)
-				p.Flags = append(p.Flags, bg.Flag)
-				r.Log = append(r.Log, p.Name+": "+bg.Reply)
-				err = nil
-			}
+			err = r.TellStory(c, s.RNG, p.ID)
 		}
 		if err != nil {
 			return reply("Действие недоступно. Проверьте фазу и цель: /sync")
@@ -421,6 +436,11 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 		}
 		if e = db.Save(tx, r, c); e != nil {
 			return e
+		}
+		if drinkReason != "" {
+			if e = broadcastDrinkBanner(tx, r, p, drinkReason); e != nil {
+				return e
+			}
 		}
 		if cmd == "/toggle" || cmd == "/memory" {
 			return s.render(tx, r, c, p)

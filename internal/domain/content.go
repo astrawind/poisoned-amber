@@ -29,7 +29,20 @@ type Memory struct {
 type Background struct {
 	ID, Name, Race, Reply, Flag string
 	Tags                        []string
-	Summary                     string `json:",omitempty"`
+	Summary                     string            `json:",omitempty"`
+	Endings                     map[string]string `json:",omitempty"`
+}
+type Boss struct {
+	ID, Name, Enemy, Intro, Challenge, Fight, Victory string
+	Replies                                           map[string]string     `json:",omitempty"`
+	Dialogues                                         map[string][]Dialogue `json:",omitempty"`
+}
+type Dialogue struct {
+	ID, Line, Response string
+}
+type Finale struct {
+	Minion, Summon, NoMinions, CopyLine, Joined, Slain, Defeat string
+	Speeches                                                   []string
 }
 type EnemyDef struct {
 	ID, Name, Strategy, MediaKey string
@@ -40,6 +53,9 @@ type Encounter struct {
 	ID, Name, MediaKey string
 	Enemies            []string
 	Boss, Final        bool
+	Intro              string                `json:",omitempty"`
+	BossPool           []string              `json:",omitempty"`
+	Dialogues          map[string][]Dialogue `json:",omitempty"`
 }
 type Word struct {
 	ID, Text, Language       string
@@ -61,6 +77,9 @@ type Content struct {
 	Words       []Word
 	Challenges  []string
 	Balance     Balance
+	Bosses      []Boss  `json:",omitempty"`
+	Finale      *Finale `json:",omitempty"`
+	Prologue    string  `json:",omitempty"`
 }
 
 var Rarities = []string{"common", "rare", "epic", "legendary"}
@@ -111,9 +130,17 @@ func (c *Content) Enemy(id string) EnemyDef {
 	}
 	return EnemyDef{}
 }
+func (c *Content) Boss(id string) Boss {
+	for _, b := range c.Bosses {
+		if b.ID == id {
+			return b
+		}
+	}
+	return Boss{}
+}
 func (c *Content) Validate() error {
 	bad := func(s string) error { return fmt.Errorf("invalid content: %s", s) }
-	if c.Schema != 1 || c.Version == "" || len(c.Classes) != 3 || len(c.Route) != 9 || len(c.Backgrounds) == 0 {
+	if (c.Schema != 1 && c.Schema != 2) || c.Version == "" || len(c.Classes) != 3 || len(c.Backgrounds) == 0 || (c.Schema == 1 && len(c.Route) != 9) || (c.Schema == 2 && len(c.Route) != 7) {
 		return bad("header/route")
 	}
 	b := c.Balance
@@ -216,21 +243,98 @@ func (c *Content) Validate() error {
 		if !unique(bg.ID) || bg.Race == "" {
 			return bad("background")
 		}
+		for outcome := range bg.Endings {
+			if !slices.Contains([]string{"joined", "slain", "defeat"}, outcome) {
+				return bad("background ending")
+			}
+		}
 	}
 	ids = map[string]bool{}
 	for _, e := range c.Enemies {
-		if !unique(e.ID) || e.HP < 1 || e.Attack < 1 || e.Strategy != "random" {
+		if !unique(e.ID) || e.HP < 1 || e.HP > 100000 || e.Attack < 1 || e.Attack > 100000 || (e.Strategy != "random" && (c.Schema != 2 || e.Strategy != "alchemist")) {
 			return bad("enemy")
 		}
 	}
 	ids = map[string]bool{}
+	dialogueIDs := map[string]bool{}
+	validateDialogues := func(dialogues map[string][]Dialogue, responseRequired bool) error {
+		if len(dialogues) > 0 && c.Schema != 2 {
+			return bad("dialogue schema")
+		}
+		for background, pool := range dialogues {
+			if c.Background(background).ID == "" || len(pool) == 0 {
+				return bad("dialogue background/pool")
+			}
+			lines := map[string]bool{}
+			for _, d := range pool {
+				line := Normalize(d.Line)
+				if Normalize(d.ID) == "" || dialogueIDs[d.ID] || line == "" || lines[line] || (responseRequired && Normalize(d.Response) == "") {
+					return bad("dialogue")
+				}
+				dialogueIDs[d.ID], lines[line] = true, true
+			}
+		}
+		return nil
+	}
+	for _, b := range c.Bosses {
+		if !unique(b.ID) || b.Name == "" || c.Enemy(b.Enemy).ID == "" || c.Enemy(b.Enemy).Strategy != "random" || b.Intro == "" || b.Challenge == "" || b.Fight == "" || b.Victory == "" {
+			return bad("boss")
+		}
+		for id := range b.Replies {
+			if c.Background(id).ID == "" {
+				return bad("boss background")
+			}
+		}
+		if err := validateDialogues(b.Dialogues, true); err != nil {
+			return err
+		}
+	}
+	if c.Schema == 1 && (len(c.Bosses) != 0 || c.Finale != nil) {
+		return bad("legacy extensions")
+	}
+	if c.Schema == 2 {
+		if c.Finale == nil || c.Enemy(c.Finale.Minion).ID == "" || c.Enemy(c.Finale.Minion).Strategy != "random" || len(c.Finale.Speeches) == 0 || c.Finale.Joined == "" || c.Finale.Slain == "" || c.Finale.Defeat == "" || c.Finale.Summon == "" || c.Finale.NoMinions == "" || c.Finale.CopyLine == "" {
+			return bad("finale")
+		}
+		for _, speech := range c.Finale.Speeches {
+			if speech == "" {
+				return bad("final speech")
+			}
+		}
+	}
+	ids = map[string]bool{}
 	for i, e := range c.Route {
-		if !unique(e.ID) || e.Boss != (i%3 == 2) || e.Final != (i == 8) || len(e.Enemies) == 0 {
+		final := i == len(c.Route)-1
+		if !unique(e.ID) || e.Boss != (i%3 == 2 || final) || e.Final != final || (len(e.Enemies) == 0 && len(e.BossPool) == 0) {
 			return bad("encounter")
+		}
+		if len(e.BossPool) > 0 && len(e.Dialogues) > 0 {
+			return bad("dialogue on pooled encounter")
+		}
+		if err := validateDialogues(e.Dialogues, e.Boss); err != nil {
+			return err
+		}
+		if len(e.BossPool) > 0 {
+			if c.Schema != 2 || !e.Boss || e.Final || len(e.Enemies) != 0 {
+				return bad("boss pool location")
+			}
+			seen := map[string]bool{}
+			for _, id := range e.BossPool {
+				if c.Boss(id).ID == "" || seen[id] {
+					return bad("boss pool")
+				}
+				seen[id] = true
+			}
+		}
+		if c.Schema == 2 && e.Final && (len(e.Enemies) != 1 || c.Enemy(e.Enemies[0]).Strategy != "alchemist") {
+			return bad("final alchemist")
 		}
 		for _, id := range e.Enemies {
 			if c.Enemy(id).ID == "" {
 				return bad("enemy reference")
+			}
+			if !e.Final && c.Enemy(id).Strategy == "alchemist" {
+				return bad("alchemist outside finale")
 			}
 		}
 	}

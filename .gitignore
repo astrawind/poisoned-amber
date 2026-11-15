@@ -28,6 +28,13 @@ go.work.sum
 # env file
 .env
 
+
+# agents stuff
+
+AGENTS.md
+PLAN.md
+RULES.md
+
 # Editor/IDE
 # .idea/
 # .vscode/

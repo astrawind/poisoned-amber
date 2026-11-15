@@ -25,9 +25,11 @@ type Fighter struct {
 	Flags                       []string
 }
 type Enemy struct {
-	ID, Def  string
-	HP, Temp int
-	Effects  []Timed
+	ID, Def       string
+	HP, Temp      int
+	Effects       []Timed
+	CopiedOnce    []string `json:",omitempty"`
+	CopyAnnounced bool     `json:",omitempty"`
 }
 type Challenge struct {
 	Kind, Secret, Scramble, Performer, Captain, Guesser string
@@ -47,6 +49,12 @@ type Room struct {
 	PerformerIndex                                                          int
 	Votes                                                                   map[string]bool
 	Log                                                                     []string
+	BossChoices                                                             map[string]string `json:",omitempty"`
+	BarrelChoices                                                           map[string]bool   `json:",omitempty"`
+	StoryUsed                                                               map[string]bool   `json:",omitempty"`
+	StoryChoices                                                            map[string]string `json:",omitempty"`
+	Drinks, Speech                                                          int
+	FinalStage                                                              string `json:",omitempty"`
 }
 
 func Normalize(s string) string {
@@ -92,7 +100,7 @@ func (r *Room) SetPhase(s string, seconds int, now int64) {
 		r.Deadline = 0
 	}
 }
-func (r *Room) Start(c *Content, now int64) error {
+func (r *Room) Start(c *Content, rng RNG, now int64) error {
 	if r.Phase != "lobby" || len(r.Players) < 2 || len(r.Players) > 7 {
 		return ErrInvalid
 	}
@@ -103,6 +111,15 @@ func (r *Room) Start(c *Content, now int64) error {
 	}
 	r.PartySize = len(r.Players)
 	r.Encounter = 0
+	if c.Schema == 2 {
+		r.BossChoices = map[string]string{}
+		for _, enc := range c.Route {
+			if len(enc.BossPool) > 0 {
+				r.BossChoices[enc.ID] = enc.BossPool[rng.Intn(len(enc.BossPool))]
+			}
+		}
+		r.Speech = rng.Intn(len(c.Finale.Speeches))
+	}
 	for i := range r.Players {
 		p := &r.Players[i]
 		p.Memory = []string{c.Class(p.Class).Start}
@@ -110,13 +127,28 @@ func (r *Room) Start(c *Content, now int64) error {
 		p.HP = p.Stats(c).HP
 		p.Draft = slices.Clone(p.Memory)
 	}
+	if c.Prologue != "" {
+		r.note(c.Prologue)
+	}
 	r.Enter(c, now)
 	return nil
 }
 func (r *Room) Enter(c *Content, now int64) {
-	e := c.Route[r.Encounter]
+	e := r.CurrentEncounter(c)
 	r.note(e.Name)
+	if e.Intro != "" {
+		r.note(e.Intro)
+	}
 	if e.Boss {
+		if c.Schema == 2 {
+			r.BarrelChoices = map[string]bool{}
+			if e.Final {
+				r.note(c.Finale.Speeches[r.Speech])
+			}
+			r.note("Бочка на столе. Каждый выбирает: выпить и восстановиться или отказаться. Каждый выпивший добавит одного пивного миньона в финале.")
+			r.SetPhase("barrel", c.Balance.PreparationSeconds, now)
+			return
+		}
 		for i := range r.Players {
 			p := &r.Players[i]
 			p.Effects = nil
@@ -134,7 +166,10 @@ func (r *Room) Enter(c *Content, now int64) {
 }
 func (r *Room) BeginCombat(c *Content, now int64) {
 	r.Enemies = nil
-	for i, id := range c.Route[r.Encounter].Enemies {
+	if b := r.CurrentBoss(c); b.ID != "" {
+		r.note(b.Fight)
+	}
+	for i, id := range r.CurrentEncounter(c).Enemies {
 		d := c.Enemy(id)
 		r.Enemies = append(r.Enemies, Enemy{ID: fmt.Sprint(i), Def: id, HP: d.HP * r.PartySize})
 	}
@@ -223,12 +258,25 @@ func (r *Room) Win(c *Content, now int64) {
 	}
 	e := c.Route[r.Encounter]
 	if e.Final {
+		if r.FinalStage == "minions" {
+			r.FinalStage = "alchemist"
+			r.note("Последний миньон осел пеной. Алхимик закатывает рукава. Бой продолжается без лечения.")
+			r.BeginCombat(c, now)
+			return
+		}
 		r.Outcome = "slain"
 		r.SetPhase("ended", 0, now)
-		r.note("Источник отравления повержен.")
+		if c.Finale == nil {
+			r.note("Источник отравления повержен.")
+		} else {
+			r.note("Алхимик повержен. Жители снова могут решать за себя.")
+		}
 		return
 	}
 	if e.Boss {
+		if b := r.CurrentBoss(c); b.ID != "" {
+			r.note(b.Victory)
+		}
 		r.Bosses++
 		for i := range r.Players {
 			r.Players[i].Slots++
@@ -566,6 +614,13 @@ func (r *Room) EndPlayers(c *Content, rng RNG, now int64) {
 	if r.Check(c, now) {
 		return
 	}
+	for i := range r.Enemies {
+		e := &r.Enemies[i]
+		if e.Temp > 0 {
+			r.note(fmt.Sprintf("⌛ %s: истекли временные HP (%d).", r.enemyName(c, e), e.Temp))
+			e.Temp = 0
+		}
+	}
 	for ei := range r.Enemies {
 		e := &r.Enemies[ei]
 		if e.HP == 0 {
@@ -575,60 +630,12 @@ func (r *Room) EndPlayers(c *Content, rng RNG, now int64) {
 			r.note("⏭ " + r.enemyName(c, e) + ": пропускает действие из-за эффекта.")
 			continue
 		}
-		d := c.Enemy(e.Def)
-		live := r.livingPlayers()
-		if len(live) == 0 {
-			break
+		r.enemyAttack(c, rng, e, Memory{Targets: 1, Effects: []Effect{{Kind: "damage", Power: 100}}}, c.Enemy(e.Def).All)
+		if r.Check(c, now) {
+			return
 		}
-		targets := []int{live[rng.Intn(len(live))]}
-		if d.All {
-			targets = live
-		} else {
-			for _, eff := range e.Effects {
-				if eff.Kind == "taunt" {
-					for pi, p := range r.Players {
-						if p.ID == eff.Source && p.HP > 0 {
-							targets = []int{pi}
-						}
-					}
-				}
-			}
-		}
-		rootUsed := map[string]bool{}
-		for _, pi := range targets {
-			if r.Players[pi].HP == 0 {
-				continue
-			}
-			actual := pi
-			// Before damage only interception is eligible. Join order resolves competing protectors.
-			for wi := range r.Players {
-				w := &r.Players[wi]
-				if wi == pi || w.HP == 0 || w.Class != "warrior" || rootUsed[w.ID] {
-					continue
-				}
-				m := firstReaction(c, w, "intercept", "ally")
-				if m.ID != "" {
-					actual = wi
-					w.Used = append(w.Used, m.ID)
-					rootUsed[w.ID] = true
-					r.note("🛡 " + w.Name + " перехватывает атаку на " + r.Players[pi].Name + " (" + m.Name + ").")
-					break
-				}
-			}
-			p := &r.Players[actual]
-			r.dealDamage(r.enemyName(c, e), p.Name, &p.HP, &p.Temp, d.Attack)
-			if p.HP > 0 && p.Class == "warrior" && !rootUsed[p.ID] {
-				m := firstReaction(c, p, "counter", "self")
-				if m.ID != "" {
-					p.Used = append(p.Used, m.ID)
-					rootUsed[p.ID] = true
-					r.note("↩ " + p.Name + ": контратака (" + m.Name + ").")
-					r.strike(c, rng, p, m, e)
-				}
-			}
-			if len(r.livingPlayers()) == 0 {
-				break
-			}
+		if e.HP > 0 && c.Enemy(e.Def).Strategy == "alchemist" {
+			r.copyMemory(c, rng, e)
 		}
 		if r.Check(c, now) {
 			return

@@ -21,7 +21,7 @@ func (r *sequence) Intn(n int) int {
 }
 func fixture(t *testing.T) (*Content, *Room) {
 	t.Helper()
-	f, e := os.Open("../../content/test.json")
+	f, e := os.Open("testdata/legacy.json")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -31,7 +31,7 @@ func fixture(t *testing.T) (*Content, *Room) {
 		t.Fatal(e)
 	}
 	r := &Room{Phase: "lobby", Leader: "a", LastAction: 100, Players: []Fighter{{ID: "a", Name: "A", Class: "warrior", Background: "miner", Ready: true}, {ID: "b", Name: "B", Class: "ranger", Background: "wanderer", Ready: true}}}
-	if e = r.Start(c, 100); e != nil {
+	if e = r.Start(c, &sequence{}, 100); e != nil {
 		t.Fatal(e)
 	}
 	return c, r

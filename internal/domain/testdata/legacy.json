@@ -1,0 +1,1654 @@
+{
+  "Schema": 1,
+  "Version": "test-2",
+  "Classes": [
+    {
+      "ID": "warrior",
+      "Name": "Воин",
+      "Start": "warrior_attack_common",
+      "Base": {
+        "HP": 26,
+        "Attack": 7,
+        "Accuracy": 80
+      }
+    },
+    {
+      "ID": "ranger",
+      "Name": "Рейнджер",
+      "Start": "ranger_attack_common",
+      "Base": {
+        "HP": 21,
+        "Attack": 8,
+        "Accuracy": 90
+      }
+    },
+    {
+      "ID": "wizard",
+      "Name": "Волшебник",
+      "Start": "wizard_attack_common",
+      "Base": {
+        "HP": 18,
+        "Attack": 6,
+        "Accuracy": 75
+      }
+    }
+  ],
+  "Memories": [
+    {
+      "ID": "warrior_attack_common",
+      "Family": "warrior_attack",
+      "Name": "Удар",
+      "Rarity": "common",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 0,
+        "Attack": 0,
+        "Accuracy": 0
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 100,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        },
+        {
+          "Kind": "temp_hp",
+          "Power": 3,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "warrior_attack_rare",
+      "Family": "warrior_attack",
+      "Name": "Удар",
+      "Rarity": "rare",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 1,
+        "Attack": 0,
+        "Accuracy": 1
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 115,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        },
+        {
+          "Kind": "temp_hp",
+          "Power": 3,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "warrior_attack_epic",
+      "Family": "warrior_attack",
+      "Name": "Удар",
+      "Rarity": "epic",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 2,
+        "Attack": 0,
+        "Accuracy": 2
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 130,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        },
+        {
+          "Kind": "temp_hp",
+          "Power": 3,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "warrior_attack_legendary",
+      "Family": "warrior_attack",
+      "Name": "Удар",
+      "Rarity": "legendary",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 3,
+        "Attack": 0,
+        "Accuracy": 3
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 145,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        },
+        {
+          "Kind": "temp_hp",
+          "Power": 3,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "ranger_attack_common",
+      "Family": "ranger_attack",
+      "Name": "Удар",
+      "Rarity": "common",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "ranger"
+      ],
+      "Bonus": {
+        "HP": 0,
+        "Attack": 0,
+        "Accuracy": 0
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 100,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "ranger_attack_rare",
+      "Family": "ranger_attack",
+      "Name": "Удар",
+      "Rarity": "rare",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "ranger"
+      ],
+      "Bonus": {
+        "HP": 1,
+        "Attack": 0,
+        "Accuracy": 1
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 115,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "ranger_attack_epic",
+      "Family": "ranger_attack",
+      "Name": "Удар",
+      "Rarity": "epic",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "ranger"
+      ],
+      "Bonus": {
+        "HP": 2,
+        "Attack": 0,
+        "Accuracy": 2
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 130,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "ranger_attack_legendary",
+      "Family": "ranger_attack",
+      "Name": "Удар",
+      "Rarity": "legendary",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "ranger"
+      ],
+      "Bonus": {
+        "HP": 3,
+        "Attack": 0,
+        "Accuracy": 3
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 145,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "wizard_attack_common",
+      "Family": "wizard_attack",
+      "Name": "Две искры",
+      "Rarity": "common",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 0,
+        "Attack": 0,
+        "Accuracy": 0
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 100,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 2
+    },
+    {
+      "ID": "wizard_attack_rare",
+      "Family": "wizard_attack",
+      "Name": "Две искры",
+      "Rarity": "rare",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 1,
+        "Attack": 0,
+        "Accuracy": 1
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 115,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 2
+    },
+    {
+      "ID": "wizard_attack_epic",
+      "Family": "wizard_attack",
+      "Name": "Две искры",
+      "Rarity": "epic",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 2,
+        "Attack": 0,
+        "Accuracy": 2
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 130,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 2
+    },
+    {
+      "ID": "wizard_attack_legendary",
+      "Family": "wizard_attack",
+      "Name": "Две искры",
+      "Rarity": "legendary",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 3,
+        "Attack": 0,
+        "Accuracy": 3
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 145,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 2
+    },
+    {
+      "ID": "poison_common",
+      "Family": "poison",
+      "Name": "Отравленный выстрел",
+      "Rarity": "common",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "ranger"
+      ],
+      "Bonus": {
+        "HP": 0,
+        "Attack": 0,
+        "Accuracy": 0
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 70,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        },
+        {
+          "Kind": "poison",
+          "Power": 3,
+          "Duration": 2,
+          "Chance": 100,
+          "End": "enemies"
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "poison_rare",
+      "Family": "poison",
+      "Name": "Отравленный выстрел",
+      "Rarity": "rare",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "ranger"
+      ],
+      "Bonus": {
+        "HP": 1,
+        "Attack": 0,
+        "Accuracy": 1
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 85,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        },
+        {
+          "Kind": "poison",
+          "Power": 3,
+          "Duration": 2,
+          "Chance": 100,
+          "End": "enemies"
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "poison_epic",
+      "Family": "poison",
+      "Name": "Отравленный выстрел",
+      "Rarity": "epic",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "ranger"
+      ],
+      "Bonus": {
+        "HP": 2,
+        "Attack": 0,
+        "Accuracy": 2
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 100,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        },
+        {
+          "Kind": "poison",
+          "Power": 3,
+          "Duration": 2,
+          "Chance": 100,
+          "End": "enemies"
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "poison_legendary",
+      "Family": "poison",
+      "Name": "Отравленный выстрел",
+      "Rarity": "legendary",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "ranger"
+      ],
+      "Bonus": {
+        "HP": 3,
+        "Attack": 0,
+        "Accuracy": 3
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 115,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        },
+        {
+          "Kind": "poison",
+          "Power": 3,
+          "Duration": 2,
+          "Chance": 100,
+          "End": "enemies"
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "stun_common",
+      "Family": "stun",
+      "Name": "Сбивающий выстрел",
+      "Rarity": "common",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "ranger"
+      ],
+      "Bonus": {
+        "HP": 0,
+        "Attack": 0,
+        "Accuracy": 0
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 70,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        },
+        {
+          "Kind": "skip",
+          "Power": 0,
+          "Duration": 1,
+          "Chance": 40,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "stun_rare",
+      "Family": "stun",
+      "Name": "Сбивающий выстрел",
+      "Rarity": "rare",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "ranger"
+      ],
+      "Bonus": {
+        "HP": 1,
+        "Attack": 0,
+        "Accuracy": 1
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 85,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        },
+        {
+          "Kind": "skip",
+          "Power": 0,
+          "Duration": 1,
+          "Chance": 40,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "stun_epic",
+      "Family": "stun",
+      "Name": "Сбивающий выстрел",
+      "Rarity": "epic",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "ranger"
+      ],
+      "Bonus": {
+        "HP": 2,
+        "Attack": 0,
+        "Accuracy": 2
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 100,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        },
+        {
+          "Kind": "skip",
+          "Power": 0,
+          "Duration": 1,
+          "Chance": 40,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "stun_legendary",
+      "Family": "stun",
+      "Name": "Сбивающий выстрел",
+      "Rarity": "legendary",
+      "Type": "active",
+      "Target": "enemy",
+      "Trigger": "",
+      "Classes": [
+        "ranger"
+      ],
+      "Bonus": {
+        "HP": 3,
+        "Attack": 0,
+        "Accuracy": 3
+      },
+      "Effects": [
+        {
+          "Kind": "damage",
+          "Power": 115,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        },
+        {
+          "Kind": "skip",
+          "Power": 0,
+          "Duration": 1,
+          "Chance": 40,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "taunt_common",
+      "Family": "taunt",
+      "Name": "Вызов",
+      "Rarity": "common",
+      "Type": "active",
+      "Target": "self",
+      "Trigger": "",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 0,
+        "Attack": 0,
+        "Accuracy": 0
+      },
+      "Effects": [
+        {
+          "Kind": "taunt",
+          "Power": 0,
+          "Duration": 2,
+          "Chance": 100,
+          "End": "enemies"
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "taunt_rare",
+      "Family": "taunt",
+      "Name": "Вызов",
+      "Rarity": "rare",
+      "Type": "active",
+      "Target": "self",
+      "Trigger": "",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 1,
+        "Attack": 0,
+        "Accuracy": 1
+      },
+      "Effects": [
+        {
+          "Kind": "taunt",
+          "Power": 0,
+          "Duration": 2,
+          "Chance": 100,
+          "End": "enemies"
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "taunt_epic",
+      "Family": "taunt",
+      "Name": "Вызов",
+      "Rarity": "epic",
+      "Type": "active",
+      "Target": "self",
+      "Trigger": "",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 2,
+        "Attack": 0,
+        "Accuracy": 2
+      },
+      "Effects": [
+        {
+          "Kind": "taunt",
+          "Power": 0,
+          "Duration": 2,
+          "Chance": 100,
+          "End": "enemies"
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "taunt_legendary",
+      "Family": "taunt",
+      "Name": "Вызов",
+      "Rarity": "legendary",
+      "Type": "active",
+      "Target": "self",
+      "Trigger": "",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 3,
+        "Attack": 0,
+        "Accuracy": 3
+      },
+      "Effects": [
+        {
+          "Kind": "taunt",
+          "Power": 0,
+          "Duration": 2,
+          "Chance": 100,
+          "End": "enemies"
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "intercept_common",
+      "Family": "intercept",
+      "Name": "Прикрытие",
+      "Rarity": "common",
+      "Type": "reactive",
+      "Target": "self",
+      "Trigger": "ally",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 0,
+        "Attack": 0,
+        "Accuracy": 0
+      },
+      "Effects": [
+        {
+          "Kind": "intercept",
+          "Power": 0,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "intercept_rare",
+      "Family": "intercept",
+      "Name": "Прикрытие",
+      "Rarity": "rare",
+      "Type": "reactive",
+      "Target": "self",
+      "Trigger": "ally",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 1,
+        "Attack": 0,
+        "Accuracy": 1
+      },
+      "Effects": [
+        {
+          "Kind": "intercept",
+          "Power": 0,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "intercept_epic",
+      "Family": "intercept",
+      "Name": "Прикрытие",
+      "Rarity": "epic",
+      "Type": "reactive",
+      "Target": "self",
+      "Trigger": "ally",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 2,
+        "Attack": 0,
+        "Accuracy": 2
+      },
+      "Effects": [
+        {
+          "Kind": "intercept",
+          "Power": 0,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "intercept_legendary",
+      "Family": "intercept",
+      "Name": "Прикрытие",
+      "Rarity": "legendary",
+      "Type": "reactive",
+      "Target": "self",
+      "Trigger": "ally",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 3,
+        "Attack": 0,
+        "Accuracy": 3
+      },
+      "Effects": [
+        {
+          "Kind": "intercept",
+          "Power": 0,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "counter_common",
+      "Family": "counter",
+      "Name": "Ответный удар",
+      "Rarity": "common",
+      "Type": "reactive",
+      "Target": "self",
+      "Trigger": "self",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 0,
+        "Attack": 0,
+        "Accuracy": 0
+      },
+      "Effects": [
+        {
+          "Kind": "counter",
+          "Power": 80,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "counter_rare",
+      "Family": "counter",
+      "Name": "Ответный удар",
+      "Rarity": "rare",
+      "Type": "reactive",
+      "Target": "self",
+      "Trigger": "self",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 1,
+        "Attack": 0,
+        "Accuracy": 1
+      },
+      "Effects": [
+        {
+          "Kind": "counter",
+          "Power": 95,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "counter_epic",
+      "Family": "counter",
+      "Name": "Ответный удар",
+      "Rarity": "epic",
+      "Type": "reactive",
+      "Target": "self",
+      "Trigger": "self",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 2,
+        "Attack": 0,
+        "Accuracy": 2
+      },
+      "Effects": [
+        {
+          "Kind": "counter",
+          "Power": 110,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "counter_legendary",
+      "Family": "counter",
+      "Name": "Ответный удар",
+      "Rarity": "legendary",
+      "Type": "reactive",
+      "Target": "self",
+      "Trigger": "self",
+      "Classes": [
+        "warrior"
+      ],
+      "Bonus": {
+        "HP": 3,
+        "Attack": 0,
+        "Accuracy": 3
+      },
+      "Effects": [
+        {
+          "Kind": "counter",
+          "Power": 125,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "boost_common",
+      "Family": "boost",
+      "Name": "Воодушевление",
+      "Rarity": "common",
+      "Type": "active",
+      "Target": "ally",
+      "Trigger": "",
+      "Classes": [
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 0,
+        "Attack": 0,
+        "Accuracy": 0
+      },
+      "Effects": [
+        {
+          "Kind": "boost",
+          "Power": 3,
+          "Duration": 2,
+          "Chance": 100,
+          "End": "players"
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "boost_rare",
+      "Family": "boost",
+      "Name": "Воодушевление",
+      "Rarity": "rare",
+      "Type": "active",
+      "Target": "ally",
+      "Trigger": "",
+      "Classes": [
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 1,
+        "Attack": 0,
+        "Accuracy": 1
+      },
+      "Effects": [
+        {
+          "Kind": "boost",
+          "Power": 3,
+          "Duration": 2,
+          "Chance": 100,
+          "End": "players"
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "boost_epic",
+      "Family": "boost",
+      "Name": "Воодушевление",
+      "Rarity": "epic",
+      "Type": "active",
+      "Target": "ally",
+      "Trigger": "",
+      "Classes": [
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 2,
+        "Attack": 0,
+        "Accuracy": 2
+      },
+      "Effects": [
+        {
+          "Kind": "boost",
+          "Power": 3,
+          "Duration": 2,
+          "Chance": 100,
+          "End": "players"
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "boost_legendary",
+      "Family": "boost",
+      "Name": "Воодушевление",
+      "Rarity": "legendary",
+      "Type": "active",
+      "Target": "ally",
+      "Trigger": "",
+      "Classes": [
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 3,
+        "Attack": 0,
+        "Accuracy": 3
+      },
+      "Effects": [
+        {
+          "Kind": "boost",
+          "Power": 3,
+          "Duration": 2,
+          "Chance": 100,
+          "End": "players"
+        }
+      ],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "heal_common",
+      "Family": "heal",
+      "Name": "Глоток восстановления",
+      "Rarity": "common",
+      "Type": "active",
+      "Target": "self",
+      "Trigger": "",
+      "Classes": [
+        "warrior",
+        "ranger",
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 0,
+        "Attack": 0,
+        "Accuracy": 0
+      },
+      "Effects": [
+        {
+          "Kind": "heal",
+          "Power": 35,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": true,
+      "Targets": 1
+    },
+    {
+      "ID": "heal_rare",
+      "Family": "heal",
+      "Name": "Глоток восстановления",
+      "Rarity": "rare",
+      "Type": "active",
+      "Target": "self",
+      "Trigger": "",
+      "Classes": [
+        "warrior",
+        "ranger",
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 1,
+        "Attack": 0,
+        "Accuracy": 1
+      },
+      "Effects": [
+        {
+          "Kind": "heal",
+          "Power": 50,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": true,
+      "Targets": 1
+    },
+    {
+      "ID": "heal_epic",
+      "Family": "heal",
+      "Name": "Глоток восстановления",
+      "Rarity": "epic",
+      "Type": "active",
+      "Target": "self",
+      "Trigger": "",
+      "Classes": [
+        "warrior",
+        "ranger",
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 2,
+        "Attack": 0,
+        "Accuracy": 2
+      },
+      "Effects": [
+        {
+          "Kind": "heal",
+          "Power": 65,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": true,
+      "Targets": 1
+    },
+    {
+      "ID": "heal_legendary",
+      "Family": "heal",
+      "Name": "Глоток восстановления",
+      "Rarity": "legendary",
+      "Type": "active",
+      "Target": "self",
+      "Trigger": "",
+      "Classes": [
+        "warrior",
+        "ranger",
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 3,
+        "Attack": 0,
+        "Accuracy": 3
+      },
+      "Effects": [
+        {
+          "Kind": "heal",
+          "Power": 80,
+          "Duration": 0,
+          "Chance": 100,
+          "End": ""
+        }
+      ],
+      "Once": true,
+      "Targets": 1
+    },
+    {
+      "ID": "resolve_common",
+      "Family": "resolve",
+      "Name": "Стойкость",
+      "Rarity": "common",
+      "Type": "passive",
+      "Target": "self",
+      "Trigger": "",
+      "Classes": [
+        "warrior",
+        "ranger",
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 5,
+        "Attack": 0,
+        "Accuracy": 0
+      },
+      "Effects": [],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "resolve_rare",
+      "Family": "resolve",
+      "Name": "Стойкость",
+      "Rarity": "rare",
+      "Type": "passive",
+      "Target": "self",
+      "Trigger": "",
+      "Classes": [
+        "warrior",
+        "ranger",
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 6,
+        "Attack": 0,
+        "Accuracy": 1
+      },
+      "Effects": [],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "resolve_epic",
+      "Family": "resolve",
+      "Name": "Стойкость",
+      "Rarity": "epic",
+      "Type": "passive",
+      "Target": "self",
+      "Trigger": "",
+      "Classes": [
+        "warrior",
+        "ranger",
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 7,
+        "Attack": 0,
+        "Accuracy": 2
+      },
+      "Effects": [],
+      "Once": false,
+      "Targets": 1
+    },
+    {
+      "ID": "resolve_legendary",
+      "Family": "resolve",
+      "Name": "Стойкость",
+      "Rarity": "legendary",
+      "Type": "passive",
+      "Target": "self",
+      "Trigger": "",
+      "Classes": [
+        "warrior",
+        "ranger",
+        "wizard"
+      ],
+      "Bonus": {
+        "HP": 8,
+        "Attack": 0,
+        "Accuracy": 3
+      },
+      "Effects": [],
+      "Once": false,
+      "Targets": 1
+    }
+  ],
+  "Backgrounds": [
+    {
+      "ID": "miner",
+      "Name": "Горняк",
+      "Summary": "Вы работали в старых штольнях и знаете горные тропы. Теперь знакомые подземелья скрыты пивным туманом — пора выяснить, что случилось с деревней.",
+      "Race": "дварф",
+      "Reply": "Я знаю старые штольни.",
+      "Flag": "tunnels",
+      "Tags": [
+        "mountain"
+      ]
+    },
+    {
+      "ID": "wanderer",
+      "Name": "Странник",
+      "Summary": "Дорога привела вас в пивоваренную деревню как раз в разгар отравлений. Вы пришли из-за гор и сможете донести её историю до внешнего мира.",
+      "Race": "человек",
+      "Reply": "Я расскажу миру правду.",
+      "Flag": "witness",
+      "Tags": [
+        "road"
+      ]
+    }
+  ],
+  "Enemies": [
+    {
+      "ID": "guard",
+      "Name": "Затуманенный страж",
+      "Strategy": "random",
+      "HP": 8,
+      "Attack": 3
+    },
+    {
+      "ID": "boss",
+      "Name": "Хранитель бочки",
+      "Strategy": "random",
+      "HP": 16,
+      "Attack": 4
+    }
+  ],
+  "Route": [
+    {
+      "ID": "enc0",
+      "Name": "Горная тропа 1",
+      "Enemies": [
+        "guard",
+        "guard"
+      ],
+      "Boss": false,
+      "Final": false
+    },
+    {
+      "ID": "enc1",
+      "Name": "Горная тропа 2",
+      "Enemies": [
+        "guard",
+        "guard"
+      ],
+      "Boss": false,
+      "Final": false
+    },
+    {
+      "ID": "enc2",
+      "Name": "Горная тропа 3",
+      "Enemies": [
+        "boss"
+      ],
+      "Boss": true,
+      "Final": false
+    },
+    {
+      "ID": "enc3",
+      "Name": "Горная тропа 4",
+      "Enemies": [
+        "guard",
+        "guard"
+      ],
+      "Boss": false,
+      "Final": false
+    },
+    {
+      "ID": "enc4",
+      "Name": "Горная тропа 5",
+      "Enemies": [
+        "guard",
+        "guard"
+      ],
+      "Boss": false,
+      "Final": false
+    },
+    {
+      "ID": "enc5",
+      "Name": "Горная тропа 6",
+      "Enemies": [
+        "boss"
+      ],
+      "Boss": true,
+      "Final": false
+    },
+    {
+      "ID": "enc6",
+      "Name": "Горная тропа 7",
+      "Enemies": [
+        "guard",
+        "guard"
+      ],
+      "Boss": false,
+      "Final": false
+    },
+    {
+      "ID": "enc7",
+      "Name": "Горная тропа 8",
+      "Enemies": [
+        "guard",
+        "guard"
+      ],
+      "Boss": false,
+      "Final": false
+    },
+    {
+      "ID": "enc8",
+      "Name": "Горная тропа 9",
+      "Enemies": [
+        "boss"
+      ],
+      "Boss": true,
+      "Final": true
+    }
+  ],
+  "Words": [
+    {
+      "ID": "w0",
+      "Text": "молот",
+      "Language": "ru",
+      "Tags": [
+        "simple"
+      ],
+      "Uses": [
+        "crocodile",
+        "three_p",
+        "anagram",
+        "codenames"
+      ],
+      "Difficulty": 1,
+      "Alternatives": []
+    },
+    {
+      "ID": "w1",
+      "Text": "бочка",
+      "Language": "ru",
+      "Tags": [
+        "simple"
+      ],
+      "Uses": [
+        "crocodile",
+        "three_p",
+        "anagram",
+        "codenames"
+      ],
+      "Difficulty": 1,
+      "Alternatives": []
+    },
+    {
+      "ID": "w2",
+      "Text": "гора",
+      "Language": "ru",
+      "Tags": [
+        "simple"
+      ],
+      "Uses": [
+        "crocodile",
+        "three_p",
+        "anagram",
+        "codenames"
+      ],
+      "Difficulty": 1,
+      "Alternatives": []
+    },
+    {
+      "ID": "w3",
+      "Text": "факел",
+      "Language": "ru",
+      "Tags": [
+        "simple"
+      ],
+      "Uses": [
+        "crocodile",
+        "three_p",
+        "anagram",
+        "codenames"
+      ],
+      "Difficulty": 1,
+      "Alternatives": []
+    },
+    {
+      "ID": "w4",
+      "Text": "ворота",
+      "Language": "ru",
+      "Tags": [
+        "simple"
+      ],
+      "Uses": [
+        "crocodile",
+        "three_p",
+        "anagram",
+        "codenames"
+      ],
+      "Difficulty": 1,
+      "Alternatives": []
+    },
+    {
+      "ID": "w5",
+      "Text": "телега",
+      "Language": "ru",
+      "Tags": [
+        "simple"
+      ],
+      "Uses": [
+        "crocodile",
+        "three_p",
+        "anagram",
+        "codenames"
+      ],
+      "Difficulty": 1,
+      "Alternatives": []
+    },
+    {
+      "ID": "w6",
+      "Text": "корона",
+      "Language": "ru",
+      "Tags": [
+        "simple"
+      ],
+      "Uses": [
+        "crocodile",
+        "three_p",
+        "anagram",
+        "codenames"
+      ],
+      "Difficulty": 1,
+      "Alternatives": []
+    },
+    {
+      "ID": "w7",
+      "Text": "река",
+      "Language": "ru",
+      "Tags": [
+        "simple"
+      ],
+      "Uses": [
+        "crocodile",
+        "three_p",
+        "anagram",
+        "codenames"
+      ],
+      "Difficulty": 1,
+      "Alternatives": []
+    },
+    {
+      "ID": "w8",
+      "Text": "ключ",
+      "Language": "ru",
+      "Tags": [
+        "simple"
+      ],
+      "Uses": [
+        "crocodile",
+        "three_p",
+        "anagram",
+        "codenames"
+      ],
+      "Difficulty": 1,
+      "Alternatives": []
+    }
+  ],
+  "Challenges": [
+    "crocodile",
+    "three_p",
+    "anagram",
+    "codenames"
+  ],
+  "Balance": {
+    "CriticalFailure": 5,
+    "PhaseSeconds": 60,
+    "RewardSeconds": 60,
+    "PreparationSeconds": 60,
+    "ChallengeSeconds": 180,
+    "VoteSeconds": 60,
+    "ExpirySeconds": 86400,
+    "RarityWeights": [
+      [
+        70,
+        25,
+        5,
+        0
+      ],
+      [
+        45,
+        35,
+        18,
+        2
+      ],
+      [
+        25,
+        35,
+        30,
+        10
+      ],
+      [
+        10,
+        30,
+        35,
+        25
+      ]
+    ]
+  }
+}

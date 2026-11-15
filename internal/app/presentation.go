@@ -10,7 +10,8 @@ import (
 	"time"
 )
 
-const welcomeText = "🍺 Poisoned Amber\nКооперативное приключение для 2–7 друзей за одним столом. Расследуйте отравления в горной деревне, сражайтесь и берегите воспоминания в пивном тумане.\n\n1. Глава создаёт комнату: /create пароль\n2. Остальные входят: /join КОД пароль\n3. Выберите класс и предысторию, нажмите «Готов», глава начинает поход.\n\n/help — все команды · /sync — текущий экран\nПароль отправляйте только в личный чат боту."
+const welcomeText = "🍺 Poisoned Amber\nКооперативное приключение для 2–7 друзей за одним столом. Дварфское пиво перестало поступать в столицу, рабочие негодуют, а поселение не отвечает на письма. Выясните, что случилось, и восстановите поставки.\n\n1. Глава создаёт комнату: /create пароль\n2. Остальные входят: /join КОД пароль\n3. Выберите класс и предысторию, нажмите «Готов», глава начинает поход.\n\n/help — все команды · /sync — текущий экран\nПароль отправляйте только в личный чат боту."
+const adultDrinkText = "✅ 18+ подтверждено.\n\n🍻 <b>ПОДГОТОВЬТЕ КРУЖКИ</b>\nДля полного погружения подготовьте своё пиво или другой напиток — чай, сок и вода тоже подходят.\n\nКогда принимаете бочку или применяете лечебное воспоминание, сделайте глоток своего напитка. Бот назовёт игрока, чья очередь поднять кружку.\n\n<i>Пивоварня учитывает подвиги, а не объём кружки.</i>"
 const helpText = welcomeText + "\n\n📋 Команды\n/adult — подтвердить 18+\n/return КОД — вернуться в свой поход\n/leave — выйти (сначала появится предупреждение)\n/pause, /resume — пауза между встречами (глава)\n\nИграйте кнопками под последним экраном. Способности отмечены цветом редкости: ⚪ обычная · 🔵 редкая · 🟣 эпическая · 🟠 легендарная.\n/answer слово — ответ в анаграмме\n/memory ID1 ID2 — выбрать память по ID\n/memory empty — забыть всё; /confirm — подтвердить."
 
 func (s *Service) broadcast(tx *sql.Tx, r *domain.Room, c *domain.Content) error {
@@ -18,6 +19,24 @@ func (s *Service) broadcast(tx *sql.Tx, r *domain.Room, c *domain.Content) error
 		if !r.Players[i].Absent {
 			if e := s.renderView(tx, r, c, &r.Players[i], true); e != nil {
 				return e
+			}
+		}
+	}
+	return nil
+}
+
+// Enqueued only for an accepted action, never from state rendering or /sync.
+// Not a Card: delivery must not replace the current controls with a toast.
+func broadcastDrinkBanner(tx *sql.Tx, r *domain.Room, actor *domain.Fighter, reason string) error {
+	name := actor.Name
+	if strings.TrimSpace(name) == "" {
+		name = "Игрок"
+	}
+	m := Message{HTML: true, Fresh: true, Text: "━━━━━━━━━━━━━━\n🍻 <b>КРУЖКУ ВВЕРХ!</b>\n━━━━━━━━━━━━━━\n\n<b>" + esc(name) + ", сделай глоток своего напитка!</b>\n" + esc(reason) + "\n\n<i>Пивоварня одобряет. Состав кружки остаётся твоим делом.</i>"}
+	for _, p := range r.Players {
+		if !p.Absent {
+			if err := enqueue(tx, p.ID, m); err != nil {
+				return err
 			}
 		}
 	}
@@ -36,7 +55,10 @@ func (s *Service) renderView(tx *sql.Tx, r *domain.Room, c *domain.Content, p *d
 	line("<b>🍺 Poisoned Amber · " + esc(r.Code) + "</b>")
 	line("<b>" + esc(phaseName(r.Phase)) + "</b>")
 	if r.Phase != "lobby" && r.Encounter < len(c.Route) {
-		line(fmt.Sprintf("Встреча %d/%d · %s", r.Encounter+1, len(c.Route), esc(c.Route[r.Encounter].Name)))
+		line(fmt.Sprintf("Встреча %d/%d · %s", r.Encounter+1, len(c.Route), esc(r.CurrentEncounter(c).Name)))
+		if c.Schema == 2 {
+			line(fmt.Sprintf("🍺 Принято угощений: %d · столько миньонов появится при отказе от союза.", r.Drinks))
+		}
 	}
 	var buildErr error
 	button := func(label, action string) {
@@ -119,7 +141,33 @@ func (s *Service) renderView(tx *sql.Tx, r *domain.Room, c *domain.Content, p *d
 			}
 		}
 	}
+	if r.Phase == "barrel" {
+		heading("🍺 Угощение от пивоварни")
+		line("Каждый решает за себя. Выпить — полностью восстановить HP, даже после выбывания, и добавить одного миньона в финале. Отказаться — сохранить нынешнее здоровье. Решение окончательное; молчание к сроку считается отказом.")
+		for _, a := range r.Players {
+			choice := "⏳ выбирает"
+			if drink, done := r.BarrelChoices[a.ID]; done {
+				choice = "отказался"
+				if drink {
+					choice = "выпил"
+				}
+			} else if a.Absent {
+				choice = "отсутствует — отказ по умолчанию"
+			}
+			line(esc(a.Name) + " · " + choice)
+		}
+		if _, done := r.BarrelChoices[p.ID]; !done && !p.Absent {
+			button("🍺 Выпить и восстановиться", "/barrel yes")
+			button("✋ Отказаться", "/barrel no")
+		}
+		if r.Leader == p.ID {
+			button("⏸ Пауза", "/pause")
+		}
+	}
 	if r.Phase == "combat" {
+		if r.FinalStage == "minions" {
+			heading("🫧 Пивные миньоны · перед алхимиком лечения не будет")
+		}
 		heading(fmt.Sprintf("⚔ Бой · круг %d", r.Round))
 		for i, e := range r.Enemies {
 			line(fmt.Sprintf("%d. %s · ♥ %d · 🛡 %d", i+1, esc(c.Enemy(e.Def).Name), e.HP, e.Temp))
@@ -207,7 +255,7 @@ func (s *Service) renderView(tx *sql.Tx, r *domain.Room, c *domain.Content, p *d
 			line("⏳ Ждём подтверждения: " + esc(strings.Join(waiting, ", ")))
 		}
 		line("Нажмите навык, чтобы включить или убрать его, затем подтвердите. Изменения применяются только после подтверждения.")
-		if r.Phase != "rewards" {
+		if r.Phase != "rewards" && !r.StoryUsed[fmt.Sprintf("%d:%s", r.Encounter, p.ID)] {
 			button("💬 Реплика предыстории", "/story")
 		}
 		if r.Leader == p.ID {
@@ -273,6 +321,10 @@ func (s *Service) renderView(tx *sql.Tx, r *domain.Room, c *domain.Content, p *d
 	}
 	if r.Phase == "vote" {
 		heading("⚖ Предложение хозяина тумана")
+		if c.Finale != nil {
+			line(esc(c.Finale.Speeches[r.Speech]))
+			line(fmt.Sprintf("При отказе: %d миньонов, затем алхимик без лечения. Он делает обычную атаку и копирует активный приём из вашей текущей памяти каждый ход.", r.Drinks))
+		}
 		line("Присоединиться к боссу? Большинство решает исход; при равенстве учитывается выбор живого главы, иначе первого живого. Молчание к сроку считается отказом.")
 		var waiting []string
 		count := 0
@@ -308,17 +360,32 @@ func (s *Service) renderView(tx *sql.Tx, r *domain.Room, c *domain.Content, p *d
 	}
 	if r.Phase == "ended" {
 		heading("🏁 " + phaseName(r.Outcome))
-		flags := map[string]bool{}
-		for _, a := range r.Players {
-			for _, f := range a.Flags {
-				flags[f] = true
+		if c.Finale != nil {
+			ending := map[string]string{"joined": c.Finale.Joined, "slain": c.Finale.Slain, "defeat": c.Finale.Defeat}[r.Outcome]
+			line(esc(ending))
+			seen := map[string]bool{}
+			for _, a := range r.Players {
+				bg := c.Background(a.Background)
+				if !seen[bg.ID] && slices.Contains(a.Flags, bg.Flag) {
+					if text := bg.Endings[r.Outcome]; text != "" {
+						line(esc(text))
+					}
+					seen[bg.ID] = true
+				}
 			}
-		}
-		if flags["tunnels"] {
-			line("Знание штолен сохранилось в рассказах горняков.")
-		}
-		if flags["witness"] {
-			line("Странник понесёт историю за пределы гор.")
+		} else {
+			flags := map[string]bool{}
+			for _, a := range r.Players {
+				for _, f := range a.Flags {
+					flags[f] = true
+				}
+			}
+			if flags["tunnels"] {
+				line("Знание штолен сохранилось в рассказах горняков.")
+			}
+			if flags["witness"] {
+				line("Странник понесёт историю за пределы гор.")
+			}
 		}
 		line("Новый поход: /create пароль или /join КОД пароль")
 	}
@@ -473,7 +540,7 @@ func timedText(es []domain.Timed) string {
 	return strings.Join(out, "; ")
 }
 func phaseName(s string) string {
-	names := map[string]string{"lobby": "Лобби", "combat": "Бой", "preparation": "Подготовка у бочки", "rewards": "Награды", "transition": "Перед следующей встречей", "paused": "Пауза", "challenge": "Испытание", "vote": "Голосование", "ended": "Поход завершён", "expired": "Комната истекла", "joined": "Сторона босса принята", "slain": "Босс повержен", "defeat": "Поражение", "crocodile": "Крокодил", "three_p": "Три-П", "anagram": "Анаграмма", "codenames": "Три слова"}
+	names := map[string]string{"lobby": "Лобби", "combat": "Бой", "barrel": "Выбор у бочки", "preparation": "Подготовка у бочки", "rewards": "Награды", "transition": "Перед следующей встречей", "paused": "Пауза", "challenge": "Испытание", "vote": "Голосование", "ended": "Поход завершён", "expired": "Комната истекла", "joined": "Сторона босса принята", "slain": "Босс повержен", "defeat": "Поражение", "crocodile": "Крокодил", "three_p": "Три-П", "anagram": "Анаграмма", "codenames": "Три слова"}
 	if n, ok := names[s]; ok {
 		return n
 	}

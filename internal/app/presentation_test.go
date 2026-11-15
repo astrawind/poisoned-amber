@@ -145,7 +145,7 @@ func TestOnboardingIncludesHelpAfterJoining(t *testing.T) {
 	}
 	j.send("1", "/start")
 	ms := queuedMessages(t, j.svc, "1")
-	if len(ms) < 2 || !strings.Contains(ms[0].Text, "/create") || !strings.Contains(ms[0].Text, "/leave") || !strings.Contains(ms[0].Text, "отравления") {
+	if len(ms) < 2 || !strings.Contains(ms[0].Text, "/create") || !strings.Contains(ms[0].Text, "/leave") || !strings.Contains(ms[0].Text, "поставки") {
 		t.Fatal("start must show onboarding, commands and current game")
 	}
 }

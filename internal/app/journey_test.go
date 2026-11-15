@@ -24,13 +24,17 @@ type journeyFixture struct {
 }
 
 func newJourneyFixture(t *testing.T, encounter int) *journeyFixture {
+	return journeyFixtureFrom(t, encounter, "../../internal/domain/testdata/legacy.json")
+}
+
+func journeyFixtureFrom(t *testing.T, encounter int, file string) *journeyFixture {
 	t.Helper()
 	store, err := db.Open(filepath.Join(t.TempDir(), "journey.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.Close() })
-	f, err := os.Open("../../content/test.json")
+	f, err := os.Open(file)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +52,7 @@ func newJourneyFixture(t *testing.T, encounter int) *journeyFixture {
 		{ID: "1", Name: "One", Class: "warrior", Background: "miner", Ready: true},
 		{ID: "2", Name: "Two", Class: "ranger", Background: "wanderer", Ready: true},
 	}}
-	if err = r.Start(c, j.now); err != nil {
+	if err = r.Start(c, j.svc.RNG, j.now); err != nil {
 		t.Fatal(err)
 	}
 	r.Encounter = encounter
