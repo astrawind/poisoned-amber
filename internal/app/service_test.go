@@ -140,12 +140,13 @@ func TestOfflineLobbyCombatRecoveryAndDuplicate(t *testing.T) {
 		t.Fatal("delivery")
 	}
 	// Version IDs are immutable; active rooms keep their original content.
-	c.Version = "test-2"
+	originalVersion := c.Version
+	c.Version = originalVersion + "-next"
 	c.Classes[0].Base.HP++
 	if e = s.Import(c); e != nil {
 		t.Fatal(e)
 	}
-	if read().ContentVersion != "test-1" {
+	if read().ContentVersion != originalVersion {
 		t.Fatal("content changed")
 	}
 }

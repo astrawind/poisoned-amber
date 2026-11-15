@@ -12,6 +12,7 @@ import (
 	"poisoned-amber/internal/adapters/telegram"
 	"poisoned-amber/internal/app"
 	"poisoned-amber/internal/domain"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -30,6 +31,11 @@ func main() {
 	}
 }
 func run() error {
+	debug, e := strconv.ParseBool(env("DEBUG", "false"))
+	if e != nil {
+		return fmt.Errorf("DEBUG must be true or false")
+	}
+	diag := diagnostics{logger: log.Default(), debug: debug}
 	f, e := os.Open(env("CONTENT_FILE", "content/test.json"))
 	if e != nil {
 		return e
@@ -69,6 +75,7 @@ func run() error {
 				return
 			case <-ticker.C:
 				if e := svc.Tick(ctx); e != nil {
+					diag.failure("scheduler", e)
 					errch <- e
 					return
 				}
@@ -85,7 +92,7 @@ func run() error {
 				errch <- nil
 				return
 			case <-ticker.C:
-				_, e := svc.Deliver(ctx, client, func(e error) (time.Duration, bool) {
+				_, e := svc.Deliver(ctx, observedSender{sender: client, d: diag}, func(e error) (time.Duration, bool) {
 					var api *telegram.APIError
 					if errors.As(e, &api) {
 						if api.Code == 403 || api.Code == 400 {
@@ -98,13 +105,14 @@ func run() error {
 					return 5 * time.Second, false
 				})
 				if e != nil {
+					diag.failure("outbox", e)
 					errch <- e
 					return
 				}
 			}
 		}
 	}()
-	log.Print("Poisoned Amber started")
+	log.Printf("Poisoned Amber started debug=%t", debug)
 	for ctx.Err() == nil {
 		select {
 		case e := <-errch:
@@ -119,6 +127,9 @@ func run() error {
 		}
 		inputs, e := client.Poll(ctx, offset)
 		if e != nil {
+			if ctx.Err() == nil {
+				diag.failure("poll", e)
+			}
 			select {
 			case <-ctx.Done():
 				return nil
@@ -133,7 +144,11 @@ func run() error {
 				e = svc.Handle(ctx, in)
 			}
 			if e != nil {
+				diag.failure("update", e)
 				return e
+			}
+			if in.User != "" {
+				diag.handled(ctx, s.DB, in)
 			}
 		}
 	}

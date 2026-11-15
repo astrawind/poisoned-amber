@@ -29,6 +29,7 @@ type Memory struct {
 type Background struct {
 	ID, Name, Race, Reply, Flag string
 	Tags                        []string
+	Summary                     string `json:",omitempty"`
 }
 type EnemyDef struct {
 	ID, Name, Strategy, MediaKey string

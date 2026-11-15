@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	mathrand "math/rand"
 	db "poisoned-amber/internal/adapters/sqlite"
 	"poisoned-amber/internal/domain"
@@ -20,13 +19,16 @@ import (
 )
 
 type Button struct {
-	Text string `json:"text"`
-	Data string `json:"callback_data"`
+	Text  string `json:"text"`
+	Data  string `json:"callback_data"`
+	Style string `json:"style,omitempty"`
 }
 type Message struct {
 	Text    string
 	Buttons [][]Button
 	Card    bool
+	Fresh   bool
+	HTML    bool
 }
 type Input struct {
 	ID, User, Name, Text, Callback string
@@ -99,10 +101,10 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 			if e != nil {
 				return e
 			}
-			return reply("18+ подтверждено. Создать: /create пароль. Войти: /join КОД пароль. Пароль отправляйте только в личный чат.")
+			return reply("✅ 18+ подтверждено.\n\n" + welcomeText)
 		}
 		if adult == 0 {
-			return reply("Poisoned Amber — игра для совершеннолетних. Подтвердите, что вам исполнилось 18: /adult")
+			return reply(welcomeText + "\n\n🔞 Игра для совершеннолетних. Сначала подтвердите, что вам исполнилось 18: /adult")
 		}
 		if in.Callback != "" {
 			var user, room, action string
@@ -134,8 +136,11 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 		}
 		cmd := strings.Split(parts[0], "@")[0]
 		if cmd == "/help" || cmd == "/start" {
+			if e := reply(helpText); e != nil {
+				return e
+			}
 			if rid == "" {
-				return reply("/create пароль · /join КОД пароль · /return КОД\nПосле входа выберите класс, предысторию и готовность.")
+				return nil
 			}
 			cmd = "/sync"
 		}
@@ -333,10 +338,13 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 			}
 		case "/continue":
 			if r.Leader == p.ID {
+				if (r.Phase == "preparation" || r.Phase == "transition") && !r.MemoryReady() {
+					return reply("Ожидаем подтверждения памяти всех живых участников. Нажмите «Подтвердить память»; по истечении срока сохранится прежний набор.")
+				}
 				err = r.Continue(c, s.RNG, now)
 			}
 		case "/fight":
-			if r.Leader == p.ID && (r.Phase == "challenge" || r.Phase == "preparation" && !c.Route[r.Encounter].Final) {
+			if r.Leader == p.ID && (r.Phase == "challenge" || r.Phase == "preparation" && !c.Route[r.Encounter].Final && r.MemoryReady()) {
 				r.BeginCombat(c, now)
 				err = nil
 			}
@@ -352,22 +360,8 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 				}
 			}
 		case "/vote":
-			if r.Phase == "vote" && p.HP > 0 && len(parts) == 2 && (parts[1] == "yes" || parts[1] == "no") {
-				if _, ok := r.Votes[p.ID]; !ok {
-					r.Votes[p.ID] = parts[1] == "yes"
-					err = nil
-					all := true
-					for _, a := range r.Players {
-						if a.HP > 0 && !a.Absent {
-							if _, ok := r.Votes[a.ID]; !ok {
-								all = false
-							}
-						}
-					}
-					if all {
-						r.FinishVote(c, now)
-					}
-				}
+			if len(parts) == 2 && (parts[1] == "yes" || parts[1] == "no") {
+				err = r.CastVote(c, p.ID, parts[1] == "yes", now)
 			}
 		case "/memory", "/toggle":
 			ids := slices.Clone(parts[1:])
@@ -387,18 +381,14 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 			err = r.SetMemory(c, &copyP, ids)
 			if err == nil {
 				p.Draft = ids
+				p.Confirmed = false
 			}
 		case "/confirm":
 			err = r.SetMemory(c, p, p.Draft)
-			if err == nil && r.Phase == "rewards" {
+			if err == nil {
 				p.Confirmed = true
-				all := true
-				for _, a := range r.Players {
-					if !a.Confirmed {
-						all = false
-					}
-				}
-				if all {
+				if r.Phase == "rewards" && r.MemoryReady() {
+					r.FinishMemory()
 					r.SetPhase("transition", c.Balance.PreparationSeconds, now)
 				}
 			}
@@ -431,6 +421,9 @@ func (s *Service) Handle(ctx context.Context, in Input) error {
 		}
 		if e = db.Save(tx, r, c); e != nil {
 			return e
+		}
+		if cmd == "/toggle" || cmd == "/memory" {
+			return s.render(tx, r, c, p)
 		}
 		return s.broadcast(tx, r, c)
 	})
@@ -482,211 +475,4 @@ func (s *Service) Tick(ctx context.Context) error {
 		}
 	}
 	return nil
-}
-func (s *Service) broadcast(tx *sql.Tx, r *domain.Room, c *domain.Content) error {
-	for i := range r.Players {
-		if !r.Players[i].Absent {
-			if e := s.render(tx, r, c, &r.Players[i]); e != nil {
-				return e
-			}
-		}
-	}
-	return nil
-}
-func (s *Service) render(tx *sql.Tx, r *domain.Room, c *domain.Content, p *domain.Fighter) error {
-	m := Message{Card: true}
-	m.Text = fmt.Sprintf("Poisoned Amber · %s\nФаза: %s · круг %d · встреча %d/9\n", r.Code, phaseName(r.Phase), r.Round, r.Encounter+1)
-	add := func(label, action string) error {
-		id := token()
-		if _, e := tx.Exec("INSERT INTO buttons VALUES(?,?,?,?,?)", id, p.ID, r.ID, r.PhaseID, action); e != nil {
-			return e
-		}
-		m.Buttons = append(m.Buttons, []Button{{label, id}})
-		return nil
-	}
-	var buildErr error
-	button := func(label, action string) {
-		if buildErr == nil {
-			buildErr = add(label, action)
-		}
-	}
-	for _, a := range r.Players {
-		m.Text += fmt.Sprintf("%s [%s] HP %d/%d +%d · готов %t\n", a.Name, a.Class, a.HP, a.Stats(c).HP, a.Temp, a.Ready)
-	}
-	if r.Phase == "lobby" {
-		for _, cl := range c.Classes {
-			button(cl.Name, "/class "+cl.ID)
-		}
-		for _, bg := range c.Backgrounds {
-			button(bg.Name, "/background "+bg.ID)
-		}
-		button("Готовность", "/ready")
-		if r.Leader == p.ID {
-			button("Начать поход", "/begin")
-		}
-	}
-	m.Text += "\nВаша память:\n"
-	for _, id := range p.Memory {
-		v := c.Memory(id)
-		m.Text += fmt.Sprintf("%s — %s (%s), бонус HP +%d, сила +%d, точность +%d; %v\n", id, v.Name, v.Rarity, v.Bonus.HP, v.Bonus.Attack, v.Bonus.Accuracy, effectText(v.Effects))
-	}
-	if r.Phase == "combat" {
-		for _, e := range r.Enemies {
-			m.Text += fmt.Sprintf("Враг %s: %s HP %d\n", e.ID, c.Enemy(e.Def).Name, e.HP)
-		}
-		if !p.Acted && p.HP > 0 {
-			for _, id := range p.Memory {
-				v := c.Memory(id)
-				if v.Type != "active" {
-					continue
-				}
-				switch v.Target {
-				case "enemy":
-					for _, e := range r.Enemies {
-						if e.HP > 0 {
-							button(v.Name+" → "+e.ID, "/act "+id+" "+e.ID)
-						}
-					}
-				case "ally":
-					for _, a := range r.Players {
-						if a.HP > 0 {
-							button(v.Name+" → "+a.Name, "/act "+id+" "+a.ID)
-						}
-					}
-				default:
-					button(v.Name, "/act "+id)
-				}
-			}
-			button("Пропустить", "/act skip")
-		}
-	}
-	if r.Phase == "rewards" || r.Phase == "preparation" || r.Phase == "transition" {
-		preview := *p
-		preview.Memory = p.Draft
-		m.Text += fmt.Sprintf("\nВыбрано: %s\nПосле подтверждения: HP %d, сила %d, точность %d\n", strings.Join(p.Draft, ", "), preview.Stats(c).HP, preview.Stats(c).Attack, preview.Stats(c).Accuracy)
-		if !p.Confirmed || r.Phase != "rewards" {
-			for _, id := range append(slices.Clone(p.Memory), p.Offer...) {
-				label := "Добавить "
-				if slices.Contains(p.Draft, id) {
-					label = "Убрать "
-				}
-				button(label+c.Memory(id).Name+" "+c.Memory(id).Rarity, "/toggle "+id)
-			}
-			if r.Phase != "rewards" {
-				button("Подтвердить память", "/confirm")
-			}
-		}
-		m.Text += fmt.Sprintf("\nСлотов: %d. Выбор и порядок: /memory ID1 ID2 …; забыть всё: /memory empty. Затем /confirm\n", p.Slots)
-		for _, id := range p.Offer {
-			v := c.Memory(id)
-			m.Text += fmt.Sprintf("Предложение %s: %s, %s, бонус %+v, эффекты %v\n", id, v.Name, v.Rarity, v.Bonus, effectText(v.Effects))
-		}
-		if r.Phase == "rewards" && !p.Confirmed {
-			button("Подтвердить выбор", "/confirm")
-		}
-		button("Реплика предыстории", "/story")
-		if r.Leader == p.ID {
-			button("Продолжить", "/continue")
-			button("Пауза", "/pause")
-		}
-	}
-	if r.Phase == "paused" && r.Leader == p.ID {
-		button("Возобновить", "/resume")
-	}
-	if r.Phase == "challenge" {
-		ch := r.Challenge
-		m.Text += "\nИспытание: " + phaseName(ch.Kind) + "\n"
-		switch ch.Kind {
-		case "crocodile", "three_p":
-			m.Text += "Исполнитель: " + r.Player(ch.Performer).Name + ". Объясните жестами или словами на П согласно типу.\n"
-			if p.ID == ch.Performer {
-				m.Text += "Секрет: " + ch.Words[0] + "\n"
-				button("Угадали", "/answer solved")
-			}
-		case "anagram":
-			m.Text += "Буквы: " + ch.Scramble + ". Ответ: /answer слово\n"
-		case "codenames":
-			m.Text += "Капитан: " + r.Player(ch.Captain).Name + "; угадывает: " + r.Player(ch.Guesser).Name + "\n"
-			for i, w := range ch.Words {
-				m.Text += w
-				if slices.Contains(ch.Open, i) {
-					m.Text += " [открыто]"
-				}
-				if p.ID == ch.Captain {
-					if i == ch.Black {
-						m.Text += " [чёрное]"
-					} else {
-						m.Text += " [синее]"
-					}
-				}
-				m.Text += "\n"
-				if p.ID == ch.Guesser {
-					button(w, fmt.Sprintf("/cell %d", i))
-				}
-			}
-		}
-		if r.Leader == p.ID {
-			button("Сразу бой", "/fight")
-		}
-	}
-	if r.Phase == "vote" {
-		m.Text += "Присоединиться к боссу? Молчание считается отказом. При равенстве решает живой глава, иначе первый живой.\n"
-		button("Присоединиться", "/vote yes")
-		button("Отказаться", "/vote no")
-	}
-	if r.Deadline > 0 {
-		m.Text += fmt.Sprintf("Срок: %s UTC\n", time.Unix(r.Deadline, 0).UTC().Format("15:04:05"))
-	}
-	m.Text += "\n" + strings.Join(r.Log, "\n")
-	if r.Phase == "ended" {
-		m.Text += "\nИсход: " + r.Outcome
-		for _, a := range r.Players {
-			for _, f := range a.Flags {
-				if f == "tunnels" {
-					m.Text += "\nЗнание штолен сохранилось в рассказах горняков."
-				}
-				if f == "witness" {
-					m.Text += "\nСтранник понесёт историю за пределы гор."
-				}
-			}
-		}
-	}
-	if buildErr != nil {
-		return buildErr
-	}
-	return enqueue(tx, p.ID, m)
-}
-
-func phaseName(s string) string {
-	names := map[string]string{"lobby": "лобби", "combat": "бой", "preparation": "подготовка у бочки", "rewards": "награды", "transition": "переход", "paused": "пауза", "challenge": "испытание", "vote": "голосование", "ended": "поход завершён", "expired": "комната истекла", "joined": "сторона босса принята", "slain": "босс повержен", "defeat": "поражение", "crocodile": "Крокодил", "three_p": "Три-П", "anagram": "Анаграмма", "codenames": "Три слова"}
-	if n, ok := names[s]; ok {
-		return n
-	}
-	return s
-}
-func effectText(es []domain.Effect) string {
-	var out []string
-	for _, e := range es {
-		v := ""
-		switch e.Kind {
-		case "damage", "counter":
-			v = fmt.Sprintf("урон %d%% силы", e.Power)
-		case "temp_hp":
-			v = fmt.Sprintf("временные HP +%d", e.Power)
-		case "poison":
-			v = fmt.Sprintf("яд %d, тиков %d", e.Power, e.Duration)
-		case "skip":
-			v = fmt.Sprintf("пропуск действия: %d%%", e.Chance)
-		case "heal":
-			v = fmt.Sprintf("лечение %d%% максимума, одноразовое", e.Power)
-		case "boost":
-			v = fmt.Sprintf("сила +%d на %d фазы", e.Power, e.Duration)
-		case "taunt":
-			v = fmt.Sprintf("провокация на %d фазы", e.Duration)
-		case "intercept":
-			v = "перехват атаки союзника"
-		}
-		out = append(out, v)
-	}
-	return strings.Join(out, "; ")
 }

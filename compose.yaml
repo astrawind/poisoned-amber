@@ -6,6 +6,7 @@ services:
       BOT_TOKEN: ${BOT_TOKEN:?Set BOT_TOKEN in .env}
       DB_PATH: /data/amber.db
       CONTENT_FILE: /app/content/test.json
+      DEBUG: ${DEBUG:-false}
     volumes:
       - amber-data:/data
     stop_grace_period: 45s

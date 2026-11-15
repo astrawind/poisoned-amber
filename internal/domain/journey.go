@@ -2,7 +2,31 @@ package domain
 
 import "slices"
 
+// MemoryReady ignores fallen and absent players, who cannot block preparation.
+func (r *Room) MemoryReady() bool {
+	for _, p := range r.Players {
+		if p.HP > 0 && !p.Absent && !p.Confirmed {
+			return false
+		}
+	}
+	return true
+}
+
+// FinishMemory keeps committed memory when a deadline expires; drafts are never
+// silently committed. Confirmed choices and earned slots are preserved.
+func (r *Room) FinishMemory() {
+	for i := range r.Players {
+		p := &r.Players[i]
+		p.Draft = slices.Clone(p.Memory)
+		p.Offer = nil
+		p.Confirmed = true
+	}
+}
+
 func (r *Room) Continue(c *Content, rng RNG, now int64) error {
+	if !r.MemoryReady() {
+		return ErrInvalid
+	}
 	switch r.Phase {
 	case "transition":
 		r.Encounter++
@@ -131,7 +155,33 @@ func (r *Room) ChallengeInput(c *Content, id, answer string, cell int, now int64
 	}
 	return nil
 }
+func (r *Room) CastVote(c *Content, id string, join bool, now int64) error {
+	p := r.Player(id)
+	if r.Phase != "vote" || p == nil || p.HP == 0 || p.Absent {
+		return ErrInvalid
+	}
+	if _, voted := r.Votes[id]; voted {
+		return ErrInvalid
+	}
+	if r.Votes == nil {
+		r.Votes = map[string]bool{}
+	}
+	r.Votes[id] = join
+	for _, player := range r.Players {
+		if player.HP > 0 && !player.Absent {
+			if _, voted := r.Votes[player.ID]; !voted {
+				return nil
+			}
+		}
+	}
+	r.FinishVote(c, now)
+	return nil
+}
+
 func (r *Room) FinishVote(c *Content, now int64) {
+	if r.Phase != "vote" {
+		return
+	}
 	yes := 0
 	live := r.livingPlayers()
 	for _, i := range live {
@@ -146,7 +196,7 @@ func (r *Room) FinishVote(c *Content, now int64) {
 			complete = false
 		}
 	}
-	if yes*2 == len(live) && complete {
+	if len(live) > 0 && yes*2 == len(live) && complete {
 		tie := r.Player(r.Leader)
 		if tie == nil || tie.HP == 0 {
 			tie = &r.Players[live[0]]
@@ -174,10 +224,18 @@ func (r *Room) Timeout(c *Content, rng RNG, now int64) {
 	}
 	switch r.Phase {
 	case "combat":
+		r.Log = nil
+		for _, p := range r.Players {
+			if p.HP > 0 && !p.Acted {
+				r.note("⏳ " + p.Name + ": время истекло, действие пропущено.")
+			}
+		}
 		r.EndPlayers(c, rng, now)
 	case "rewards":
+		r.FinishMemory()
 		r.SetPhase("transition", c.Balance.PreparationSeconds, now)
 	case "preparation", "transition":
+		r.FinishMemory()
 		_ = r.Continue(c, rng, now)
 	case "challenge":
 		r.BeginCombat(c, now)

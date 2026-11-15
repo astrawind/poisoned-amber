@@ -148,6 +148,7 @@ func TestChallengeRolesAndFinals(t *testing.T) {
 		c, r := fixture(t)
 		r.Encounter = 8
 		r.Enter(c, 101)
+		r.FinishMemory()
 		if e := r.Continue(c, &sequence{}, 102); e != nil {
 			t.Fatal(e)
 		}
@@ -261,6 +262,7 @@ func TestVoteTimeoutDoesNotUseTieBreakForMissingVote(t *testing.T) {
 	c, r := fixture(t)
 	r.Encounter = 8
 	r.Enter(c, 101)
+	r.FinishMemory()
 	_ = r.Continue(c, &sequence{}, 102)
 	r.Votes = map[string]bool{"a": true}
 	r.Timeout(c, &sequence{}, r.Deadline)
@@ -270,10 +272,50 @@ func TestVoteTimeoutDoesNotUseTieBreakForMissingVote(t *testing.T) {
 	c, r = fixture(t)
 	r.Encounter = 8
 	r.Enter(c, 101)
+	r.FinishMemory()
 	_ = r.Continue(c, &sequence{}, 102)
 	r.Votes = map[string]bool{"a": true, "b": false}
 	r.FinishVote(c, 103)
 	if r.Outcome != "joined" {
 		t.Fatal("completed tie must use leader")
+	}
+}
+
+func TestContinueRequiresMemoryAndDeadlineKeepsCommittedChoice(t *testing.T) {
+	c, r := fixture(t)
+	r.Win(c, 101)
+	r.Offers(c, &sequence{})
+	r.Players[0].Slots++
+	original := slices.Clone(r.Players[0].Memory)
+	r.Players[0].Draft = nil
+	r.Timeout(c, &sequence{}, r.Deadline)
+	if r.Phase != "transition" || !r.MemoryReady() || !slices.Equal(r.Players[0].Memory, original) || r.Players[0].Slots != 3 {
+		t.Fatal("reward timeout lost committed memory or slot")
+	}
+	r.Players[0].Draft = nil
+	r.Players[0].Confirmed = false
+	phase, encounter := r.PhaseID, r.Encounter
+	if err := r.Continue(c, &sequence{}, r.Deadline-1); err == nil || r.PhaseID != phase || r.Encounter != encounter {
+		t.Fatal("unconfirmed transition advanced")
+	}
+	r.SetPhase("paused", 0, 150)
+	r.SetPhase("transition", 60, 160)
+	if len(r.Players[0].Draft) != 0 || r.Players[0].Confirmed {
+		t.Fatal("resume discarded draft or confirmation state")
+	}
+	r.Timeout(c, &sequence{}, r.Deadline)
+	if r.Phase != "combat" || r.Encounter != encounter+1 || !slices.Equal(r.Players[0].Memory, original) {
+		t.Fatal("transition timeout did not preserve committed choice")
+	}
+	r.Players[0].Confirmed = true
+	r.Players[1].Confirmed = false
+	r.Players[1].Absent = true
+	if !r.MemoryReady() {
+		t.Fatal("absent participant blocks confirmation")
+	}
+	r.Players[1].Absent = false
+	r.Players[1].HP = 0
+	if !r.MemoryReady() {
+		t.Fatal("fallen participant blocks confirmation")
 	}
 }

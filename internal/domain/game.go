@@ -80,18 +80,11 @@ func (p *Fighter) Stats(c *Content) Stats {
 func (p *Fighter) Clamp(c *Content) { p.HP = min(p.HP, p.Stats(c).HP) }
 func (r *Room) note(s string) {
 	r.Log = append(r.Log, s)
-	if len(r.Log) > 6 {
-		r.Log = r.Log[len(r.Log)-6:]
+	if len(r.Log) > 40 {
+		r.Log = r.Log[len(r.Log)-40:]
 	}
 }
 func (r *Room) SetPhase(s string, seconds int, now int64) {
-	if s == "transition" {
-		for i := range r.Players {
-			p := &r.Players[i]
-			p.Draft = slices.Clone(p.Memory)
-			p.Offer = nil
-		}
-	}
 	r.Phase = s
 	r.PhaseID++
 	r.Deadline = now + int64(seconds)
@@ -130,6 +123,8 @@ func (r *Room) Enter(c *Content, now int64) {
 			p.Temp = 0
 			p.HP = p.Stats(c).HP
 			p.Draft = slices.Clone(p.Memory)
+			p.Offer = nil
+			p.Confirmed = p.Absent
 		}
 		r.note("Бочка восстановила всех. Подготовьте память.")
 		r.SetPhase("preparation", c.Balance.PreparationSeconds, now)
@@ -304,6 +299,7 @@ func (r *Room) Act(c *Content, rng RNG, id, mem, target string, now int64) error
 		return ErrInvalid
 	}
 	if mem == "skip" {
+		r.Log = nil
 		p.Acted = true
 		r.note(p.Name + " пропускает")
 		r.AfterAction(c, rng, now)
@@ -336,6 +332,7 @@ func (r *Room) Act(c *Content, rng RNG, id, mem, target string, now int64) error
 	default:
 		return ErrInvalid
 	}
+	r.Log = nil
 	p.Acted = true
 	r.emit(BattleEvent{Kind: "action", Actor: p.ID})
 	r.note(p.Name + ": " + m.Name)
@@ -343,8 +340,11 @@ func (r *Room) Act(c *Content, rng RNG, id, mem, target string, now int64) error
 		switch e.Kind {
 		case "temp_hp":
 			p.Temp += e.Power
+			r.note(fmt.Sprintf("🛡 %s: +%d временных HP (всего %d).", p.Name, e.Power, p.Temp))
 		case "heal":
+			before := p.HP
 			p.HP = min(p.Stats(c).HP, p.HP+p.Stats(c).HP*e.Power/100)
+			r.note(fmt.Sprintf("💚 %s: восстановлено %d HP → %d/%d.", p.Name, p.HP-before, p.HP, p.Stats(c).HP))
 		case "boost":
 			targets := []*Fighter{ally}
 			if m.Target == "team" {
@@ -357,11 +357,13 @@ func (r *Room) Act(c *Content, rng RNG, id, mem, target string, now int64) error
 			}
 			for _, a := range targets {
 				apply(&a.Effects, Timed{Kind: e.Kind, Source: p.ID, Family: m.Family, Power: e.Power, Left: e.Duration, End: e.End})
+				r.note(fmt.Sprintf("💪 %s: усиление силы +%d на %d фазы.", a.Name, e.Power, e.Duration))
 			}
 		case "taunt":
 			for i := range r.Enemies {
 				apply(&r.Enemies[i].Effects, Timed{Kind: "taunt", Source: p.ID, Family: m.Family, Left: e.Duration, End: e.End})
 			}
+			r.note(fmt.Sprintf("📣 %s провоцирует врагов на %d фазы.", p.Name, e.Duration))
 		}
 	}
 	if enemy != nil {
@@ -384,6 +386,7 @@ func (r *Room) Act(c *Content, rng RNG, id, mem, target string, now int64) error
 	if m.Once {
 		p.Memory = slices.Delete(p.Memory, slices.Index(p.Memory, m.ID), slices.Index(p.Memory, m.ID)+1)
 		p.Clamp(c)
+		r.note(fmt.Sprintf("🧪 %s: воспоминание израсходовано; после снятия его бонусов у %s HP %d/%d.", m.Name, p.Name, p.HP, p.Stats(c).HP))
 	}
 	r.AfterAction(c, rng, now)
 	return nil
@@ -393,6 +396,7 @@ func (r *Room) strike(c *Content, rng RNG, p *Fighter, m Memory, t *Enemy) {
 	var friend *Fighter
 	if roll >= p.Stats(c).Accuracy {
 		if roll >= p.Stats(c).Accuracy+c.Balance.CriticalFailure {
+			r.note("💨 " + p.Name + " → " + r.enemyName(c, t) + ": промах.")
 			return
 		}
 		choices := []string{"void"}
@@ -418,17 +422,22 @@ func (r *Room) strike(c *Content, rng RNG, p *Fighter, m Memory, t *Enemy) {
 		}
 		switch choices[rng.Intn(len(choices))] {
 		case "void":
+			r.note("💥 " + p.Name + ": критическая неудача — удар в пустоту.")
 			return
 		case "enemy":
 			t = others[rng.Intn(len(others))]
+			r.note("💥 " + p.Name + ": критическая неудача — другая цель: " + r.enemyName(c, t) + ".")
 		case "ally":
 			friend = friends[rng.Intn(len(friends))]
+			r.note("💥 " + p.Name + ": критическая неудача — попадание в союзника " + friend.Name + ".")
 		}
 	}
 	for _, e := range m.Effects {
 		var hp, temp *int
 		var effects *[]Timed
+		targetName := r.enemyName(c, t)
 		if friend != nil {
+			targetName = friend.Name
 			hp = &friend.HP
 			temp = &friend.Temp
 			effects = &friend.Effects
@@ -444,7 +453,7 @@ func (r *Room) strike(c *Content, rng RNG, p *Fighter, m Memory, t *Enemy) {
 				n = max(1, n)
 			}
 			r.emit(BattleEvent{Kind: "before_damage", Actor: p.ID, Amount: n, Reaction: m.Type == "reactive"})
-			damage(hp, temp, n)
+			r.dealDamage(p.Name, targetName, hp, temp, n)
 			r.emit(BattleEvent{Kind: "after_damage", Actor: p.ID, Amount: n, Reaction: m.Type == "reactive"})
 		case "poison", "skip":
 			if rng.Intn(100) < e.Chance {
@@ -453,10 +462,71 @@ func (r *Room) strike(c *Content, rng RNG, p *Fighter, m Memory, t *Enemy) {
 					end = "players"
 				}
 				apply(effects, Timed{Kind: e.Kind, Source: p.ID, Family: m.Family, Power: e.Power, Left: e.Duration, End: end})
+				if e.Kind == "poison" {
+					power := e.Power
+					for _, active := range *effects {
+						if active.Kind == e.Kind && active.Source == p.ID && active.Family == m.Family {
+							power = active.Power
+						}
+					}
+					r.note(fmt.Sprintf("☠ %s: яд %d, осталось тиков %d.", targetName, power, e.Duration))
+				} else {
+					r.note("⏭ " + targetName + ": наложен пропуск следующего действия.")
+				}
+			} else {
+				label := "яд"
+				if e.Kind == "skip" {
+					label = "пропуск действия"
+				}
+				r.note("▫ " + targetName + ": " + label + " не сработал.")
 			}
 		}
 	}
 }
+
+func (r *Room) enemyName(c *Content, e *Enemy) string {
+	for i := range r.Enemies {
+		if r.Enemies[i].ID == e.ID {
+			return fmt.Sprintf("%s #%d", c.Enemy(e.Def).Name, i+1)
+		}
+	}
+	return c.Enemy(e.Def).Name
+}
+
+func (r *Room) dealDamage(actor, target string, hp, temp *int, amount int) {
+	beforeHP, beforeTemp := *hp, *temp
+	damage(hp, temp, amount)
+	r.note(fmt.Sprintf("⚔ %s → %s: урон %d · потеря HP %d · поглощено %d · осталось HP %d.", actor, target, amount, beforeHP-*hp, beforeTemp-*temp, *hp))
+	if beforeHP > 0 && *hp == 0 {
+		r.note("💀 " + target + " выбывает.")
+	}
+}
+
+// Keep the effect mechanics in tick; report its actual outcome, including shield absorption.
+func (r *Room) tickEffects(name string, hp, temp *int, es *[]Timed, side string) {
+	beforeHP, beforeTemp := *hp, *temp
+	poison := false
+	for _, e := range *es {
+		if e.End != side {
+			continue
+		}
+		poison = poison || e.Kind == "poison"
+		if e.Left == 1 && e.Kind != "skip" {
+			label := map[string]string{"poison": "яд", "boost": "усиление", "taunt": "провокация"}[e.Kind]
+			if label != "" {
+				r.note("⌛ " + name + ": " + label + " завершается после этой фазы.")
+			}
+		}
+	}
+	tick(hp, temp, es, side)
+	if poison {
+		r.note(fmt.Sprintf("☠ %s: тик яда · потеря HP %d · поглощено %d · осталось HP %d.", name, beforeHP-*hp, beforeTemp-*temp, *hp))
+		if beforeHP > 0 && *hp == 0 {
+			r.note("💀 " + name + " выбывает от яда.")
+		}
+	}
+}
+
 func tick(hp, temp *int, es *[]Timed, side string) {
 	for _, e := range *es {
 		if e.Kind == "poison" && e.End == side {
@@ -490,7 +560,7 @@ func (r *Room) EndPlayers(c *Content, rng RNG, now int64) {
 	for i := range r.Players {
 		p := &r.Players[i]
 		if p.HP > 0 {
-			tick(&p.HP, &p.Temp, &p.Effects, "players")
+			r.tickEffects(p.Name, &p.HP, &p.Temp, &p.Effects, "players")
 		}
 	}
 	if r.Check(c, now) {
@@ -498,7 +568,11 @@ func (r *Room) EndPlayers(c *Content, rng RNG, now int64) {
 	}
 	for ei := range r.Enemies {
 		e := &r.Enemies[ei]
-		if e.HP == 0 || consume(&e.Effects, "skip") {
+		if e.HP == 0 {
+			continue
+		}
+		if consume(&e.Effects, "skip") {
+			r.note("⏭ " + r.enemyName(c, e) + ": пропускает действие из-за эффекта.")
 			continue
 		}
 		d := c.Enemy(e.Def)
@@ -537,17 +611,18 @@ func (r *Room) EndPlayers(c *Content, rng RNG, now int64) {
 					actual = wi
 					w.Used = append(w.Used, m.ID)
 					rootUsed[w.ID] = true
+					r.note("🛡 " + w.Name + " перехватывает атаку на " + r.Players[pi].Name + " (" + m.Name + ").")
 					break
 				}
 			}
 			p := &r.Players[actual]
-			damage(&p.HP, &p.Temp, d.Attack)
-			r.note(d.Name + " атакует " + p.Name)
+			r.dealDamage(r.enemyName(c, e), p.Name, &p.HP, &p.Temp, d.Attack)
 			if p.HP > 0 && p.Class == "warrior" && !rootUsed[p.ID] {
 				m := firstReaction(c, p, "counter", "self")
 				if m.ID != "" {
 					p.Used = append(p.Used, m.ID)
 					rootUsed[p.ID] = true
+					r.note("↩ " + p.Name + ": контратака (" + m.Name + ").")
 					r.strike(c, rng, p, m, e)
 				}
 			}
@@ -562,13 +637,16 @@ func (r *Room) EndPlayers(c *Content, rng RNG, now int64) {
 	for i := range r.Enemies {
 		e := &r.Enemies[i]
 		if e.HP > 0 {
-			tick(&e.HP, &e.Temp, &e.Effects, "enemies")
+			r.tickEffects(r.enemyName(c, e), &e.HP, &e.Temp, &e.Effects, "enemies")
 		}
 	}
 	for i := range r.Players {
 		p := &r.Players[i]
 		if p.HP > 0 {
-			tick(&p.HP, &p.Temp, &p.Effects, "enemies")
+			r.tickEffects(p.Name, &p.HP, &p.Temp, &p.Effects, "enemies")
+		}
+		if p.Temp > 0 {
+			r.note(fmt.Sprintf("⌛ %s: истекли временные HP (%d).", p.Name, p.Temp))
 		}
 		p.Temp = 0
 	}

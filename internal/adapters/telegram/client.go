@@ -110,8 +110,11 @@ func (c *Client) Poll(ctx context.Context, offset int64) ([]app.Input, error) {
 }
 func (c *Client) Send(ctx context.Context, chat string, m app.Message, previous int64) (int64, error) {
 	body := map[string]any{"chat_id": chat, "text": m.Text, "reply_markup": map[string]any{"inline_keyboard": m.Buttons}}
+	if m.HTML {
+		body["parse_mode"] = "HTML"
+	}
 	method := "sendMessage"
-	if m.Card && previous > 0 {
+	if m.Card && !m.Fresh && previous > 0 {
 		body["message_id"] = previous
 		method = "editMessageText"
 	}
